@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27703.2035
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MtGuiController", "MtGuiController\MtGuiController.csproj", "{709BDBD4-A2AB-4EAD-861F-EE91CF794E3E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MtGuiController", "..\_MtGuiController\MtGuiController\MtGuiController.csproj", "{440FEC35-C896-45B1-A533-1323E7728724}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{709BDBD4-A2AB-4EAD-861F-EE91CF794E3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{709BDBD4-A2AB-4EAD-861F-EE91CF794E3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{709BDBD4-A2AB-4EAD-861F-EE91CF794E3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{709BDBD4-A2AB-4EAD-861F-EE91CF794E3E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{440FEC35-C896-45B1-A533-1323E7728724}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{440FEC35-C896-45B1-A533-1323E7728724}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{440FEC35-C896-45B1-A533-1323E7728724}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{440FEC35-C896-45B1-A533-1323E7728724}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
