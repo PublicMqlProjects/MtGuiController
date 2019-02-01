@@ -46,8 +46,8 @@ namespace MtGuiController
         /// <summary>
         /// Create GuiController for windows form
         /// </summary>
-        /// <param name="assembly_path"></param>
-        /// <param name="form_name"></param>
+        /// <param name="assembly_path">Path to assembly</param>
+        /// <param name="form_name">Windows Form's name</param>
         /// <returns></returns>
         private static GuiController GetGuiController(string assembly_path, string form_name)
         {
@@ -56,25 +56,25 @@ namespace MtGuiController
             GuiController controller = new GuiController(assembly, form, m_global_events);
             return controller;
         }
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="assembly"></param>
-        /// <returns></returns>
-        private static Form FindForm(Assembly assembly, string form_name)
+/// <summary>
+/// Find needed form
+/// </summary>
+/// <param name="assembly">Assembly</param>
+/// <returns></returns>
+private static Form FindForm(Assembly assembly, string form_name)
+{
+    Type[] types = assembly.GetTypes();
+    foreach (Type type in types)
+    {
+        //assembly.CreateInstance()
+        if (type.BaseType == typeof(Form) && type.Name == form_name)
         {
-            Type[] types = assembly.GetTypes();
-            foreach (Type type in types)
-            {
-                //assembly.CreateInstance()
-                if (type.BaseType == typeof(Form) && type.Name == form_name)
-                {
-                    object obj_form = type.Assembly.CreateInstance(type.FullName);
-                    return (Form)obj_form;
-                }
-            }
-            throw new Exception("Form with name " + form_name + " in assembly " + assembly.FullName + "  not find");
+            object obj_form = type.Assembly.CreateInstance(type.FullName);
+            return (Form)obj_form;
         }
+    }
+    throw new Exception("Form with name " + form_name + " in assembly " + assembly.FullName + "  not find");
+}
         private static void SendExceptionEvent(Exception ex)
         {
             GuiEvent ex_event = new GuiEvent()
@@ -90,7 +90,6 @@ namespace MtGuiController
         /// Пользовательскую форму, вызванную из MetaTrader необходимо запускать в асинхронном режиме,
         /// что бы обеспечить отзывчивость интерфейса.
         /// </summary>
-        [STAThread]
         public static void ShowForm(string assembly_path, string form_name)
         {
             try
@@ -109,7 +108,6 @@ namespace MtGuiController
         /// <summary>
         /// После того, как эксперт закончит работу с формой, необходимо завершить процесс ее выполнения.
         /// </summary>
-        [STAThread]
         public static void HideForm(string assembly_path, string form_name)
         {
             try
@@ -133,7 +131,6 @@ namespace MtGuiController
         /// <param name="lparam"></param>
         /// <param name="dparam"></param>
         /// <param name="sparam"></param>
-        [STAThread]
         public static void SendEvent(string el_name, int id, long lparam, double dparam, string sparam)
         {
             foreach(var kvp in m_controllers)
@@ -159,7 +156,6 @@ namespace MtGuiController
         /// <param name="lparam"></param>
         /// <param name="dparam"></param>
         /// <param name="sparam"></param>
-        [STAThread]
         public static void GetEvent(int event_n, ref string el_name, ref int id, ref long lparam, ref double dparam, ref string sparam)
         {
             GuiEvent e = m_global_events[event_n];
@@ -173,7 +169,6 @@ namespace MtGuiController
         /// 
         /// </summary>
         /// <returns></returns>
-        [STAThread]
         public static int EventsTotal()
         {
             return m_global_events.Count;

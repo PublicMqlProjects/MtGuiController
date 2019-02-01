@@ -144,8 +144,6 @@ namespace MtGuiController
         /// <param name="form">Windows form</param>
         private void SubscribeOnElements(Form form)
         {
-            //m_form = form;
-            //m_form.Disposed += OnDisposeForm;
             Dictionary<Type, List<HandlerControl>> types_and_events = new Dictionary<Type, List<HandlerControl>>();
             types_and_events.Add(typeof(VScrollBar), new List<HandlerControl>() { vscrol => ((VScrollBar)vscrol).Scroll += OnScroll });
             types_and_events.Add(typeof(Button), new List<HandlerControl>()  { button => ((Button)button).Click += OnClick });
