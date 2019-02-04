@@ -3,35 +3,33 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Reflection;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MtGuiController
 {
-    
-    
     /// <summary>
     /// Class contein not-static methods and handlers for abstract windows form
     /// </summary>
     public partial class GuiController
     {
         #region Private fileds
-        
         /// <summary>
         /// 
         /// </summary>
         private Assembly m_assembly = null;
         /// <summary>
-        /// 
+        /// Windows form
         /// </summary>
         private Form m_form = null;
+        /// <summary>
+        /// 
+        /// </summary>
+        private bool m_is_closing = false;
         /// <summary>
         /// Global events list
         /// </summary>
         private List<GuiEvent> m_events = null;
-        /// <summary>
-        /// Current run process
-        /// </summary>
-        private Task m_task = null;
         /// <summary>
         /// Controls collection
         /// </summary>
@@ -41,20 +39,10 @@ namespace MtGuiController
         /// </summary>
         /// <param name="control"></param>
         private delegate void HandlerControl(Control control);
-        
+
         #endregion
         #region Handlers of events
-        /// <summary>
-        /// Handler on dispose of form
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void OnDisposeForm(object sender, EventArgs e)
-        {
-            //Form form = (Form)sender;
-            
-            //m_controls.Clear();
-        }
+        
         /// <summary>
         /// This method receives a scroll event and sends it's to MetaTrader 
         /// </summary>
@@ -69,7 +57,7 @@ namespace MtGuiController
                 return;
             GuiEvent evnt = new GuiEvent
             {
-                id = (int)GuiEventType.ScrollChange,
+                id = GuiEventType.ScrollChange,
                 el_name = control.Name,
                 lparam = scroll_args.OldValue,
                 dparam = scroll_args.NewValue,
@@ -86,7 +74,7 @@ namespace MtGuiController
             Control control = (Control)sender;
             GuiEvent evnt = new GuiEvent
             {
-                id = (int)GuiEventType.ClickOnElement,
+                id = GuiEventType.ClickOnElement,
                 el_name = control.Name
             };
             m_events.Add(evnt);
@@ -100,7 +88,7 @@ namespace MtGuiController
         {
             GuiEvent evnt = new GuiEvent
             {
-                id = (int)GuiEventType.TextChange,
+                id = GuiEventType.TextChange,
                 el_name = control.Name,
                 sparam = control.Text
             };
@@ -128,8 +116,9 @@ namespace MtGuiController
                 OnTextChange((Control)sender);
         }
         #endregion
+        
         /// <summary>
-        /// 
+        /// Create new gui controller
         /// </summary>
         private GuiController(Assembly assembly, Form form, List<GuiEvent> global_events_list)
         {
@@ -144,6 +133,7 @@ namespace MtGuiController
         /// <param name="form">Windows form</param>
         private void SubscribeOnElements(Form form)
         {
+            form.FormClosing += OnClosingForm;
             Dictionary<Type, List<HandlerControl>> types_and_events = new Dictionary<Type, List<HandlerControl>>();
             types_and_events.Add(typeof(VScrollBar), new List<HandlerControl>() { vscrol => ((VScrollBar)vscrol).Scroll += OnScroll });
             types_and_events.Add(typeof(Button), new List<HandlerControl>()  { button => ((Button)button).Click += OnClick });
@@ -161,18 +151,47 @@ namespace MtGuiController
         /// <summary>
         /// Run form
         /// </summary>
-        public async void RunForm()
+        public void RunForm()
         {
-            m_task = Task.Run(() => Application.Run(m_form));
-            await m_task;
+            Thread thread = new Thread(() => Application.Run(m_form));
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            Thread.Sleep(200);
         }
+        #region Dispose
+        
         /// <summary>
         /// Dispose form
         /// </summary>
-        public async void DisposeForm()
+        public void DisposeForm()
         {
-            m_controls.Clear();
-            await Task.Run(() => m_form.Dispose());
+            m_form.Dispose();
         }
+
+        /// <summary>
+        /// Handler on dispose of form
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnClosingForm(object sender, EventArgs e)
+        {
+            m_is_closing = true;
+            m_controls.Clear();
+        }
+        /// <summary>
+        /// Dispose status
+        /// </summary>
+        private bool IsDiposed
+        {
+            get
+            {
+                if (m_is_closing)
+                    return true;
+                if (m_form == null)
+                    return true;
+                return m_form.IsDisposed;
+            }
+        }
+        #endregion
     }
 }
