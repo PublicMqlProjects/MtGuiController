@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Windows.Forms;
 using System.Reflection;
-using System.IO;
 
 namespace MtGuiController
 {
@@ -16,7 +13,10 @@ namespace MtGuiController
         Exception,
         ClickOnElement,
         TextChange,
-        ScrollChange
+        ScrollChange,
+        TabIndexChange,
+        CheckBoxChange,
+        CheckBoxEnable
     }
     /// <summary>
     /// Container for event
@@ -139,7 +139,19 @@ namespace MtGuiController
         /// <param name="lparam">long value</param>
         /// <param name="dparam">double value</param>
         /// <param name="sparam">string value</param>
-        public static void SendEvent(string el_name, int id, long lparam, double dparam, string sparam)
+        public static void SendEvent(string el_name, int id, ref long lparam, double dparam, string sparam)
+        {
+            SendEventRef(el_name, ref id, ref lparam, ref dparam, sparam);
+        }
+        /// <summary>
+        /// Send event
+        /// </summary>
+        /// <param name="el_name">name of control</param>
+        /// <param name="id">Event type</param>
+        /// <param name="lparam">long value</param>
+        /// <param name="dparam">double value</param>
+        /// <param name="sparam">string value</param>
+        public static void SendEventRef(string el_name, ref int id, ref long lparam, ref double dparam, string sparam)
         {
             try
             {
@@ -162,6 +174,22 @@ namespace MtGuiController
                         case GuiEventType.TextChange:
                             control.Invoke((MethodInvoker)delegate { control.Text = sparam; });
                             break;
+                        case GuiEventType.CheckBoxChange:
+                            {
+                                CheckBox checkBox = (CheckBox)control;
+                                CheckState state = (CheckState)lparam;
+                                control.Invoke((MethodInvoker)delegate { checkBox.CheckState = state; });
+                                break;
+                            }
+                        case GuiEventType.CheckBoxEnable:
+                            {
+                                CheckBox checkBox = (CheckBox)control;
+                                bool enable = lparam == 0 ? false : true;
+                                //control.Text += " " + lparam;
+                                control.Invoke((MethodInvoker)delegate { checkBox.Enabled = enable; });
+                                controller.OnCheckBoxEnabel(checkBox, new EventArgs());
+                                break;
+                            }
                     }
                 }
             }

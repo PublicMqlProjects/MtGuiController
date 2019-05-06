@@ -34,12 +34,12 @@ namespace MtGuiController
         /// Controls collection
         /// </summary>
         private Dictionary<string, Control> m_controls = new Dictionary<string, Control>();
+        
         /// <summary>
         /// Abstract handler of any event of win-form element
         /// </summary>
         /// <param name="control"></param>
         private delegate void HandlerControl(Control control);
-
         #endregion
         #region Handlers of events
         
@@ -76,6 +76,57 @@ namespace MtGuiController
             {
                 id = GuiEventType.ClickOnElement,
                 el_name = control.Name
+            };
+            m_events.Add(evnt);
+        }
+        /// <summary>
+        /// This method receives a click event and sends it's to MetaTrader 
+        /// </summary>
+        /// <param name="sender">Any winform element</param>
+        /// <param name="e"></param>
+        private void OnChecked(object sender, EventArgs e)
+        {
+            CheckBox control = (CheckBox)sender;
+            GuiEvent evnt = new GuiEvent
+            {
+                id = GuiEventType.CheckBoxChange,
+                el_name = control.Name,
+                sparam = control.Text,
+                lparam = (long)control.CheckState
+            };
+            m_events.Add(evnt);
+        }
+        /// <summary>
+        /// This method receives a click event and sends it's to MetaTrader 
+        /// </summary>
+        /// <param name="sender">Any winform element</param>
+        /// <param name="e"></param>
+        private void OnCheckBoxEnabel(object sender, EventArgs e)
+        {
+            CheckBox control = (CheckBox)sender;
+            GuiEvent evnt = new GuiEvent
+            {
+                id = GuiEventType.CheckBoxEnable,
+                el_name = control.Name,
+                sparam = control.Text,
+                lparam = (long)control.CheckState
+            };
+            m_events.Add(evnt);
+        }
+        /// <summary>
+        /// This method receives a click event and sends it's to MetaTrader 
+        /// </summary>
+        /// <param name="sender">Any winform element</param>
+        /// <param name="e"></param>
+        private void OnTabChanged(object sender, EventArgs e)
+        {
+            TabControl control = (TabControl)sender;
+            GuiEvent evnt = new GuiEvent
+            {
+                id = GuiEventType.TabIndexChange,
+                el_name = control.Name,
+                lparam = control.SelectedIndex,
+                sparam = control.SelectedTab.Name
             };
             m_events.Add(evnt);
         }
@@ -134,18 +185,30 @@ namespace MtGuiController
         private void SubscribeOnElements(Form form)
         {
             form.FormClosing += OnClosingForm;
+            //-- define resolve events
             Dictionary<Type, List<HandlerControl>> types_and_events = new Dictionary<Type, List<HandlerControl>>();
             types_and_events.Add(typeof(VScrollBar), new List<HandlerControl>() { vscrol => ((VScrollBar)vscrol).Scroll += OnScroll });
             types_and_events.Add(typeof(Button), new List<HandlerControl>()  { button => ((Button)button).Click += OnClick });
             types_and_events.Add(typeof(Label), new List<HandlerControl>());
-            types_and_events.Add(typeof(TextBox), new List<HandlerControl>() { text_box => text_box.LostFocus += OnLostFocus, text_box => text_box.KeyDown += OnKeyDown });
-            foreach (Control control in form.Controls)
+            types_and_events.Add(typeof(TextBox), new List<HandlerControl>() { text_box => text_box.LostFocus += OnLostFocus,
+                                                                               text_box => text_box.KeyDown += OnKeyDown });
+            types_and_events.Add(typeof(CheckBox), new List<HandlerControl>() { check_box => ((CheckBox)check_box).CheckStateChanged += OnChecked });
+            types_and_events.Add(typeof(TabControl), new List<HandlerControl>() { tab_box => ((TabControl)tab_box).SelectedIndexChanged += OnTabChanged });
+            //-- Recursive subscribe on controls
+            SubscribeOnControls(types_and_events, form);
+        }
+        /// <summary>
+        /// Recursive subscribe on controls
+        /// </summary>
+        /// <param name="control"></param>
+        private void SubscribeOnControls(Dictionary<Type, List<HandlerControl>> types_and_events, Control control)
+        {
+            foreach (Control cnt in control.Controls)
+                SubscribeOnControls(types_and_events, cnt);
+            if (types_and_events.ContainsKey(control.GetType()))
             {
-                if (types_and_events.ContainsKey(control.GetType()))
-                {
-                    types_and_events[control.GetType()].ForEach(el => el.Invoke(control));
-                    m_controls.Add(control.Name, control);
-                }
+                types_and_events[control.GetType()].ForEach(el => el.Invoke(control));
+                m_controls.Add(control.Name, control);
             }
         }
         /// <summary>
