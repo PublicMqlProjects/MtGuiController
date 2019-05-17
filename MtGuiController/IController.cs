@@ -3,20 +3,71 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Reflection;
 
+namespace MtGuiController.Published
+{
+    public enum BlockingControl
+    {
+        NotLockControl,
+        LockControl
+    }
+    //
+    // Summary:
+    //     Specifies constants defining which buttons to display on a System.Windows.Forms.MessageBox.
+    public enum MessageBoxButtons
+    {
+        //
+        // Summary:
+        //     The message box contains an OK button.
+        OK = 0,
+        //
+        // Summary:
+        //     The message box contains OK and Cancel buttons.
+        OKCancel = 1,
+        //
+        // Summary:
+        //     The message box contains Abort, Retry, and Ignore buttons.
+        AbortRetryIgnore = 2,
+        //
+        // Summary:
+        //     The message box contains Yes, No, and Cancel buttons.
+        YesNoCancel = 3,
+        //
+        // Summary:
+        //     The message box contains Yes and No buttons.
+        YesNo = 4,
+        //
+        // Summary:
+        //     The message box contains Retry and Cancel buttons.
+        RetryCancel = 5
+    }
+}
+
+
 namespace MtGuiController
 {
+    
     /// <summary>
     /// Type of gui event
     /// </summary>
     public enum GuiEventType
     {
         Exception,
+        MessageBox,
         ClickOnElement,
         TextChange,
         ScrollChange,
         TabIndexChange,
         CheckBoxChange,
-        CheckBoxEnable
+        ElementEnable,
+        RadioButtonChange,
+        ComboBoxChange,
+        NumericChange,
+        NumericFormatChange,
+        NumericMaxChange,
+        NumericMinChange,
+        DateTimePickerChange,
+        ElementHide,
+        AddItem,
     }
     /// <summary>
     /// Container for event
@@ -105,8 +156,9 @@ namespace MtGuiController
                 m_controllers.Add(full_path, controller);
                 controller.RunForm();
             }
-            catch(Exception e)
+            catch(ArgumentException e)
             {
+                Type t = e.GetType();
                 SendExceptionEvent(e);
             }
         }
@@ -139,7 +191,7 @@ namespace MtGuiController
         /// <param name="lparam">long value</param>
         /// <param name="dparam">double value</param>
         /// <param name="sparam">string value</param>
-        public static void SendEvent(string el_name, int id, ref long lparam, double dparam, string sparam)
+        public static void SendEvent(string el_name, int id, long lparam, double dparam, string sparam)
         {
             SendEventRef(el_name, ref id, ref lparam, ref dparam, sparam);
         }
@@ -163,11 +215,12 @@ namespace MtGuiController
                         m_controllers.Remove(kvp.Key);
                         return;
                     }
-                    if (!controller.m_controls.ContainsKey(el_name))
-                        continue;
                     Control control = null;
                     if (!controller.m_controls.TryGetValue(el_name, out control))
-                        return;
+                    {
+                        SendExceptionEvent(new Exception("SendEvent: element with name '" + el_name + "' not find"));
+                        continue;
+                    }
                     GuiEventType event_type = (GuiEventType)id;
                     switch (event_type)
                     {
@@ -181,15 +234,107 @@ namespace MtGuiController
                                 control.Invoke((MethodInvoker)delegate { checkBox.CheckState = state; });
                                 break;
                             }
-                        case GuiEventType.CheckBoxEnable:
+                        case GuiEventType.RadioButtonChange:
+                            RadioButton radio_btn = (RadioButton)control;
+                            bool check = lparam == 0 ? false : true;
+                            control.Invoke((MethodInvoker)delegate { radio_btn.Checked = check; });
+                            break;
+                        case GuiEventType.ComboBoxChange:
+                            ComboBox combo_box = (ComboBox)control;
+                            if(combo_box.SelectedIndex != (int)lparam)
+                                combo_box.SelectedIndex = (int)lparam;
+                            break;
+                        case GuiEventType.NumericChange:
+                            NumericUpDown numeric = (NumericUpDown)control;
+                            if (numeric.Value != (decimal)dparam)
+                                numeric.Value = (decimal)dparam;
+                            break;
+                        case GuiEventType.NumericFormatChange:
+                            if (control.GetType() != typeof(NumericUpDown))
                             {
-                                CheckBox checkBox = (CheckBox)control;
-                                bool enable = lparam == 0 ? false : true;
-                                //control.Text += " " + lparam;
-                                control.Invoke((MethodInvoker)delegate { checkBox.Enabled = enable; });
-                                controller.OnCheckBoxEnabel(checkBox, new EventArgs());
+                                SendExceptionEvent(new Exception("Element " + control.Name + " doesn't support 'NumericStepsChange' event"));
                                 break;
                             }
+                            NumericUpDown num = (NumericUpDown)control;
+                            num.DecimalPlaces = (int)lparam;
+                            num.Increment = (decimal)dparam;
+                            break;
+                        case GuiEventType.NumericMaxChange:
+                            if (control.GetType() != typeof(NumericUpDown))
+                            {
+                                SendExceptionEvent(new Exception("Element " + control.Name + " doesn't support 'NumericMaxChange' event"));
+                                break;
+                            }
+                            NumericUpDown nummax = (NumericUpDown)control;
+                            nummax.Maximum = (decimal)dparam;
+                            break;
+                        case GuiEventType.NumericMinChange:
+                            if (control.GetType() != typeof(NumericUpDown))
+                            {
+                                SendExceptionEvent(new Exception("Element " + control.Name + " doesn't support 'NumericMinChange' event"));
+                                break;
+                            }
+                            NumericUpDown nummin = (NumericUpDown)control;
+                            nummin.Minimum = (decimal)dparam;
+                            break;
+                        case GuiEventType.ElementHide:
+                            if (lparam != 0)
+                                control.Hide();
+                            else
+                                control.Show();
+                            break;
+                        case GuiEventType.DateTimePickerChange:
+                            DateTimePicker picker = (DateTimePicker)control;
+                            picker.Value = MtConverter.ToSharpDateTime(lparam);
+                            break;
+                        case GuiEventType.ElementEnable:
+                            {
+                                bool enable = lparam == 0 ? false : true;
+                                if (enable != control.Enabled)
+                                {
+                                    control.Invoke((MethodInvoker)delegate { control.Enabled = enable; });
+                                    controller.OnEnableChange(control, new EventArgs());
+                                }
+                                break;
+                            }
+                        case GuiEventType.MessageBox:
+                            {
+                                if (lparam == 1)
+                                    control.Enabled = false;
+                                string[] nodes = sparam.Split('|');
+                                MessageBoxButtons buttons;
+                                if (dparam == 0.0)
+                                    buttons = MessageBoxButtons.OK;
+                                else
+                                    buttons = (MessageBoxButtons)(int)dparam;
+                                if (nodes.Length == 1)
+                                    MessageBox.Show(sparam, sparam, buttons);
+                                else if (nodes.Length == 2)
+                                {
+                                    var icon = ParseIcon(nodes[0]);
+                                    if(icon == MessageBoxIcon.None)
+                                        MessageBox.Show(nodes[0], nodes[1], buttons);
+                                    else
+                                        MessageBox.Show(nodes[1], nodes[1], buttons, icon);
+                                }
+                                else
+                                {
+                                    var icon = ParseIcon(nodes[0]);
+                                    MessageBox.Show(nodes[1], nodes[2], buttons, icon);
+                                }
+                                control.Enabled = true;
+                                break;
+                            }
+                        case GuiEventType.AddItem:
+                            if (control.GetType() != typeof(ComboBox))
+                            {
+                                SendExceptionEvent(new Exception("Element " + control.Name + " doesn't support 'Add Item' event"));
+                                break;
+                            }
+                            ComboBox box = (ComboBox)control;
+                            box.Items.Add(sparam);
+                            break;
+                        
                     }
                 }
             }
@@ -197,6 +342,23 @@ namespace MtGuiController
             {
                 SendExceptionEvent(ex);
             }
+        }
+        /// <summary>
+        /// Parse Icon
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        private static MessageBoxIcon ParseIcon(string text)
+        {
+            if (text == "i" || text == "Info")
+                return MessageBoxIcon.Information;
+            else if (text == "?" || text == "Question")
+                return MessageBoxIcon.Question;
+            else if (text == "!!!" || text == "Error")
+                return MessageBoxIcon.Error;
+            else if (text == "!" || text == "Warning")
+                return MessageBoxIcon.Warning;
+            return MessageBoxIcon.None;
         }
         /// <summary>
         /// Get event
@@ -226,5 +388,42 @@ namespace MtGuiController
         }
         #endregion
     }
+/// <summary>
+/// System Converter MetaTrader - C# 
+/// </summary>
+public static class MtConverter
+{
+    /// <summary>
+    /// Convert C# DateTime format to MQL (POSIX) DateTime format.
+    /// </summary>
+    /// <param name="date_time"></param>
+    /// <returns></returns>
+    public static long ToMqlDateTime(DateTime date_time)
+    {
+        DateTime tiks_1970 = new DateTime(1970, 01, 01);
+        if (date_time < tiks_1970)
+            return 0;
+        TimeSpan time_delta = date_time - tiks_1970;
+        return (long)Math.Floor(time_delta.TotalSeconds);
+    }
+    /// <summary>
+    /// Convert MQL (Posix) time format to sharp DateTime value.
+    /// </summary>
+    /// <param name="mql_time">MQL datetime as tiks</param>
+    /// <returns></returns>
+    public static DateTime ToSharpDateTime(long mql_time)
+    {
+        DateTime tiks_1970 = new DateTime(1970, 01, 01);
+        if (mql_time <= 0 || mql_time > int.MaxValue)
+            return tiks_1970;
+        TimeSpan time_delta = new TimeSpan(0, 0, (int)mql_time);
+        DateTime sharp_time = tiks_1970 + time_delta;
+        return sharp_time;
+    }
 
+    public static double DecimalMax()
+    {
+        return (double)decimal.MaxValue;
+    }
+}
 }
